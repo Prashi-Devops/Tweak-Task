@@ -1,0 +1,60 @@
+service: aws-api-lambda-s3-image-upload
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  iamRoleStatements:
+    -  Effect: "Allow"
+       Action:
+         - "s3:*"
+         - "logs:CreateLogStream"
+         - "logs:PutLogEvents"
+         - "cognito-idp:ListUsers"
+         - "cognito-idp:AdminCreateUser"
+       Resource: 
+         - "arn:aws:s3:::*/*"
+         - "arn:aws:logs:us-east-1:126973638770:log-group:/aws/lambda/s3uploadtst:*"
+         - "arn:aws:cognito-idp:us-east-1:126973638770:userpool/*"
+         - "arn:aws:logs:us-east-1:126973638770:*"
+
+functions:
+  index:
+    handler: index.handler
+    events:
+      - http: POST s3upload
+    Description: 's3upload lambda'
+    name: s3-upload-image
+    environment: 
+      bucketName: s3-upload-buckets
+      UserpoolId: 
+        Ref: serviceUserPool
+  user:
+    handler: user.handler
+    events:
+      - http: POST userCreate
+    Description: ''
+    name: user-create
+    environment: 
+      bucketName: s3-upload-buckets
+      UserpoolId: 
+        Ref: serviceUserPool
+
+resources:
+    Resources:
+      Bucket:
+        Type: AWS::S3::Bucket
+        Properties:
+          BucketName: s3-upload-buckets
+      serviceUserPool:
+        Type: AWS::Cognito::UserPool
+        Properties:
+          UserPoolName: s3-user-pool
+      serviceUserPoolClient:
+        Type: AWS::Cognito::UserPoolClient
+        Properties:
+          ClientName: service-user-pool-client-dev
+          UserPoolId:
+            Ref: serviceUserPool
+          ExplicitAuthFlows:
+            - ALLOW_USER_SRP_AUTH
+            - ALLOW_REFRESH_TOKEN_AUTH
